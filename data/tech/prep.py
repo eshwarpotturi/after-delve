@@ -3,10 +3,18 @@ A=json.load(open("agg.json")); mo=A["months"]; T=A["tot"]; N=len(mo)
 months=["20"+m[:2]+"-"+m[2:] for m in mo]
 W=A["W"]; wave_of={w:k for k,L in enumerate(W) for w in L}
 def sm(r,k=3): return [sum(r[max(0,i-k+1):i+1])/len(r[max(0,i-k+1):i+1]) for i in range(len(r))]
+F=json.load(open("families.json")); FAM=F["FAM"]; merged={w:f for f,L in FAM.items() for w in L}
 words={}
+def add(name,counts,forms,wave=None):
+    r=[1e4*a/t for a,t in zip(counts,T)]; b=1e4*sum(counts[:48])/sum(T[:48]); s=sm(r)
+    if wave is None:
+        yr={y:sum(counts[i] for i,m in enumerate(mo) if m[:2]==y)/sum(T[i] for i,m in enumerate(mo) if m[:2]==y) for y in("24","25","26")}
+        wave={"24":0,"25":1,"26":2}[max(yr,key=yr.get)]
+    words[name]={"r":[round(x,2) for x in s],"b":round(b,2),"w":wave,"f":forms}
+for f,L in FAM.items(): add(f,F["cnt"][f],L)
 for w,k in wave_of.items():
-    r=[1e4*a/t for a,t in zip(A["wc"][w],T)]; b=1e4*sum(A["wc"][w][:48])/sum(T[:48]); s=sm(r)
-    words[w]={"r":[round(x,2) for x in s],"b":round(b,2),"w":k}
+    if w not in merged: add(w,A["wc"][w],[w],k)
+print("families",len(words),{f:words[f]["w"] for f in FAM})
 out={"months":months,"waves":[[round(100*a/t,2) for a,t in zip(A["wave"][k],T)] for k in range(4)],"words":words,"W":W,"total":sum(T)}
 FN={"cs":"Computer science","eess":"Electrical engineering","stat":"Statistics","econ":"Economics and finance","qbio":"Quantitative biology","phys":"Physics","math":"Mathematics"}
 pct=lambda v:round(100*v[4]/v[0],3)
@@ -23,7 +31,7 @@ wv=out["waves"]
 for k,nm in enumerate(["w1","w2","w3","any"]):
     p=max(range(N),key=lambda i:wv[k][i]); y22=100*sum(A["wave"][k][36:48])/sum(T[36:48])
     print(nm,"2022 %.2f"%y22,"peak",months[p],wv[k][p],"last",wv[k][-1], "apr23",wv[k][months.index("2023-04")], "dec22", wv[k][months.index("2022-12")])
-for w in ["delves","intricate","structurally","collapses","survives","reframes","underscoring","underexplored"]:
+for w in ["delve","intricate","structurally","collapses","survives","reframes","underscore","underexplored"]:
     x=words[w]; pk=max(range(N),key=lambda i:x["r"][i]); print(w,"base",x["b"],"peak3m",months[pk],x["r"][pk],"x",round(x["r"][pk]/x["b"],1),"last3m",x["r"][-1],"x",round(x["r"][-1]/x["b"],1))
 for m in ["2023-06","2024-04","2025-06","2026-09"]:
     i=months.index(m); rk=sorted([(words[w]["r"][i]/words[w]["b"],w) for w in words if words[w]["b"]>=0.3],reverse=True)[:8]
