@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="How AI marker words spread through 10.4 million research abstracts, and how the vocabulary keeps changing.">
+<title>After Delve</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one reading column of prose (65ch) with full-width figures between; highlighter marks carry the subject. */
+:root{
+  --bg:#f3f5f8; --surface:#ffffff; --ink:#121a26; --ink2:#465266; --muted:#748095; --rule:#dae0e8;
+  --hl:#ffe14d; --hl-ink:#121a26; --fade:#eb6834; --rise:#2a78d6; --area:#2a78d622; --tick:#121a26;
+  --display:"Bricolage Grotesque","Arial Narrow",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0f141b; --surface:#171e29; --ink:#eef2f7; --ink2:#b4bfcd; --muted:#8492a6; --rule:#2a3543;
+  --hl:#f0d23c; --hl-ink:#121a26; --fade:#e0683a; --rise:#4a93ea; --area:#4a93ea2e; --tick:#eef2f7; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0f141b; --surface:#171e29; --ink:#eef2f7; --ink2:#b4bfcd; --muted:#8492a6; --rule:#2a3543;
+  --hl:#f0d23c; --hl-ink:#121a26; --fade:#e0683a; --rise:#4a93ea; --area:#4a93ea2e; --tick:#eef2f7; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.6;margin:0}
+.wrap{max-width:1040px;margin:0 auto;padding-inline:20px;padding-block:40px 72px;display:flex;flex-direction:column;gap:56px}
+h1,h2{font-family:var(--display);text-wrap:balance;margin:0;letter-spacing:-0.01em}
+h1{font-size:clamp(2.3rem,6.4vw,4.4rem);line-height:1.02;font-weight:700}
+h2{font-size:clamp(1.5rem,3.2vw,2.1rem);line-height:1.12;font-weight:700}
+p{margin:0;max-width:65ch}
+.eyebrow{font-family:var(--mono);font-size:.74rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+mark{background:var(--hl);color:var(--hl-ink);padding:.02em .22em;border-radius:2px}
+header{display:flex;flex-direction:column;gap:22px}
+.specimen{font-family:var(--mono);font-size:clamp(.95rem,2vw,1.12rem);line-height:1.9;color:var(--ink2);max-width:60ch;border-left:2px solid var(--rule);padding-left:16px}
+.specimen small{display:block;font-size:.72rem;color:var(--muted);letter-spacing:.04em;margin-top:6px;line-height:1.4}
+.lede{font-size:1.12rem;color:var(--ink2)}
+.stats{display:flex;flex-wrap:wrap;gap:20px 44px}
+.stat{min-width:0}
+.stat b{display:block;font-family:var(--display);font-size:clamp(1.9rem,4.6vw,2.9rem);line-height:1;font-weight:700;font-variant-numeric:tabular-nums}
+.stat span{display:block;font-size:.86rem;color:var(--ink2);max-width:23ch;margin-top:6px;line-height:1.35}
+section{display:flex;flex-direction:column;gap:18px}
+section>p{color:var(--ink2)}
+section>p strong{color:var(--ink);font-weight:600}
+figure{margin:0;background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:18px 18px 14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+figcaption{font-size:.95rem;font-weight:600;line-height:1.35}
+figcaption small{display:block;font-weight:400;color:var(--muted);font-size:.8rem;margin-top:2px}
+.chart{width:100%;position:relative;min-width:0}
+.chart svg{display:block;width:100%;overflow:visible}
+svg text{font-family:var(--mono);font-size:11px;fill:var(--muted)}
+svg text.lab{fill:var(--ink);font-size:12px;font-weight:500}
+svg text.note{fill:var(--ink2)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:.8rem;color:var(--ink2)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.legend i.tk{width:2px;height:13px;border-radius:0;background:var(--tick);vertical-align:-2px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:760px){.two{grid-template-columns:1fr}}
+/* race */
+.racehead{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px}
+.racehead output{font-family:var(--display);font-size:1.7rem;font-weight:700;min-width:8.5ch;font-variant-numeric:tabular-nums}
+button.play{font:600 .88rem var(--body);background:var(--ink);color:var(--bg);border:0;border-radius:4px;padding:8px 16px;cursor:pointer;min-width:5.6em}
+button.play:hover{opacity:.86}
+button:focus-visible,input:focus-visible{outline:2px solid var(--rise);outline-offset:2px}
+input[type=range]{flex:1 1 220px;min-width:0;accent-color:var(--ink)}
+.race{position:relative;height:340px}
+.row{position:absolute;left:0;right:0;height:28px;display:flex;align-items:center;gap:10px;transition:transform .32s ease,opacity .32s ease}
+.row .w{flex:0 0 7.6em;text-align:right;font-family:var(--mono);font-size:.82rem;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .track{flex:1;min-width:0;display:flex;align-items:center;gap:8px}
+.row .bar{height:20px;border-radius:0 4px 4px 0;transition:width .32s ease;min-width:2px}
+.row .v{font-family:var(--mono);font-size:.78rem;color:var(--ink2);white-space:nowrap;font-variant-numeric:tabular-nums}
+@media (max-width:520px){.row .w{flex-basis:7.6em;font-size:.72rem}}
+@media (prefers-reduced-motion:reduce){.row,.row .bar{transition:none}}
+/* bars */
+.hb{display:grid;grid-template-columns:max-content 1fr max-content;gap:5px 10px;align-items:center;font-size:.84rem}
+.hb .n{color:var(--ink);white-space:nowrap}
+.hb .n small{color:var(--muted);font-size:.74rem}
+.hb .t{position:relative;height:16px;min-width:0}
+.hb .t b{position:absolute;left:0;top:0;bottom:0;background:var(--rise);border-radius:0 4px 4px 0}
+.hb .t u{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--tick)}
+.hb .p{font-family:var(--mono);font-size:.78rem;color:var(--ink2);font-variant-numeric:tabular-nums;text-align:right}
+.hb .hbrow{display:contents}
+.tblwrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.84rem}
+th,td{text-align:left;padding:6px 10px 6px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+th{font-family:var(--mono);font-size:.7rem;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:400}
+td.num,th.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;padding-right:0;padding-left:14px}
+td small{color:var(--muted)}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-size:.78rem;line-height:1.4;padding:7px 10px;border-radius:4px;max-width:260px;z-index:9;transform:translate(-50%,-112%)}
+.tip b{font-weight:600}
+ul.plain{margin:0;padding-left:1.1em;max-width:65ch;color:var(--ink2);display:flex;flex-direction:column;gap:8px}
+ul.plain strong{color:var(--ink);font-weight:600}
+footer{border-top:1px solid var(--rule);padding-top:20px;font-size:.84rem;color:var(--muted);display:flex;flex-direction:column;gap:8px}
+footer p{max-width:80ch}
+a{color:inherit;text-decoration-color:var(--muted);text-underline-offset:3px}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="eyebrow">10.4 million biomedical abstracts · January 2019 to September 2026</div>
+  <h1><mark>Delve</mark> is gone. Its replacements are everywhere.</h1>
+  <p class="specimen">This study <mark>delves</mark> into the <mark>intricate</mark> <mark>realm</mark> of gut microbiota, <mark>underscoring</mark> an <mark>underexplored</mark> mechanism and <mark>leveraging</mark> a <mark>transformative</mark> framework.<small>An invented sentence built from the marker words. No real paper is quoted.</small></p>
+  <p class="lede">After ChatGPT arrived, a handful of words spread through research abstracts at a speed no vocabulary shift had shown before. The best-known one, "delve", has since almost vanished. The share of abstracts carrying this style of wording kept rising for another two years.</p>
+  <div class="stats">
+    <div class="stat"><b>1 in 73</b><span>abstracts used a marker word in 2022, before the tools spread</span></div>
+    <div class="stat"><b>1 in 8</b><span>did at the peak, in November 2025</span></div>
+    <div class="stat"><b>−95%</b><span>fall in "delves" from its April 2024 high to September 2026</span></div>
+  </div>
+</header>
+
+<section>
+  <figure>
+    <figcaption>Share of abstracts containing at least one of 20 marker words<small>Monthly, papers indexed in PubMed (via Europe PMC). Hover for values.</small></figcaption>
+    <div class="chart" id="c-any"></div>
+  </figure>
+  <p>The line sits between 1.1% and 1.4% for four years. It starts to climb in mid-2023, roughly six months after ChatGPT's release, which matches the time a paper takes to go from draft to publication. <strong>It reaches 12.2% in November 2025</strong>, then drifts down to 8.1% by September 2026.</p>
+  <p>The drop at the end should be read with care. The 20 words were chosen from 2024 and 2025 text, and the next sections show that the vocabulary keeps changing. A fixed word list loses its grip over time, so a falling line can mean the list is ageing while the practice continues.</p>
+</section>
+
+<section>
+  <h2>The words take turns</h2>
+  <p>Each bar shows how many times more common a word is than it was before 2023. Press play to watch the ranking change. <strong>"Delves" peaks at about 80 times its old rate in mid-2024</strong>, then sinks as writers and newer AI models learn to avoid it. By 2026 the top of the table belongs to words few people have been warned about.</p>
+  <figure>
+    <div class="racehead">
+      <button class="play" id="race-play" type="button">Play</button>
+      <output id="race-month" for="race-range">April 2024</output>
+      <input type="range" id="race-range" min="0" max="92" value="63" aria-label="Month">
+    </div>
+    <div class="race" id="race"></div>
+    <div class="legend"><span><i style="background:var(--fade)"></i>Faded: now below 60% of its peak</span><span><i style="background:var(--rise)"></i>Still in heavy use</span><span>× = multiple of the word's 2019–2022 rate, 3-month average</span></div>
+  </figure>
+</section>
+
+<section>
+  <h2>The replacements are far bigger than "delve" ever was</h2>
+  <p>Both charts use the same scale. At its height "delves" appeared in about 45 of every 10,000 abstracts. <strong>"Integrates" now appears in 208</strong>, and "synthesizes" has gone from 4 to 101. These words are harder to police because each one is ordinary on its own.</p>
+  <div class="two">
+    <figure><figcaption>Peaked in 2024, then fell<small>Abstracts per 10,000 containing the word, 3-month average</small></figcaption><div class="chart" id="c-fade"></div></figure>
+    <figure><figcaption>Still near their highs in 2026<small>Abstracts per 10,000 containing the word, 3-month average</small></figcaption><div class="chart" id="c-rise"></div></figure>
+  </div>
+  <p>Ordinary academic vocabulary did not move. "However" appeared in 23% of abstracts in 2019 and 25% in 2026.</p>
+</section>
+
+<section>
+  <h2>Every country moved. Some moved twice as far.</h2>
+  <p>The share in 2025 runs from 7.5% for papers with an author in Japan to 16.8% for Saudi Arabia. India is at 15.2%. In 2022 every country sat between 0.5% and 2.3%. Much of this is likely researchers who write in a second language using AI to polish their English, which most publishers permit when it is disclosed.</p>
+  <figure>
+    <figcaption>Share of 2025 abstracts with a marker word, by country of any author's affiliation<small>The dark tick is the same country's share in 2022. Hover for paper counts.</small></figcaption>
+    <div class="legend"><span><i style="background:var(--rise)"></i>2025</span><span><i class="tk"></i>2022</span></div>
+    <div class="hb" id="c-country"></div>
+  </figure>
+</section>
+
+<section>
+  <h2>For publishers, the gap is between journals</h2>
+  <p>Across the eight largest publishers in this set, the 2025 share sits in a narrow band from 10.5% to 14.5%. None stands apart. <strong>Between individual journals the range is 2.7% to 21.5%</strong>, so the useful unit for an integrity team is the journal and its field.</p>
+  <figure>
+    <figcaption>Share of 2025 abstracts with a marker word, by publisher<small>Built from the 320 most frequent journals in a sample; publisher taken from Crossref. The dark tick is 2022.</small></figcaption>
+    <div class="hb" id="c-pub"></div>
+  </figure>
+  <figure>
+    <figcaption>111 large journals, each dot one journal<small>Journals with at least 1,500 abstracts in 2025. Hover or tap a dot for the name.</small></figcaption>
+    <div class="chart" id="c-jr"></div>
+  </figure>
+  <div class="two">
+    <figure><figcaption>Ten highest</figcaption><div class="tblwrap"><table id="t-hi"></table></div></figure>
+    <figure><figcaption>Ten lowest</figcaption><div class="tblwrap"><table id="t-lo"></table></div></figure>
+  </div>
+  <p>Field explains a lot of this. Chemistry and taxonomy abstracts are terse and formulaic, so they score low. Public health, psychology and medical computing abstracts are discursive, so they score high.</p>
+</section>
+
+<section>
+  <h2>What a publisher can take from this</h2>
+  <ul class="plain">
+    <li><strong>Word lists expire.</strong> A screen built on "delve" in 2024 would miss most of 2026. Detection has to be re-derived from current text on a schedule.</li>
+    <li><strong>Benchmark by journal.</strong> A journal at 20% when its field peers are at 10% is a concrete question for its editor.</li>
+    <li><strong>Pair it with disclosure.</strong> Most policies allow AI for language editing if declared. Comparing these rates with declared use shows how large the undeclared share is.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>What this does and does not show</h2>
+  <ul class="plain">
+    <li><strong>It measures wording, and nothing about misconduct.</strong> A marker word shows the text likely passed through an AI tool. It says nothing about whether the science is sound.</li>
+    <li><strong>It undercounts.</strong> Text edited to remove the tell-tale words, or written by a newer model, is missed.</li>
+    <li><strong>It covers biomedical and life-science research only</strong>, the scope of PubMed. Other fields may differ.</li>
+    <li><strong>The 20 words were picked by data.</strong> About 43,000 abstracts from 2021–22 were compared with about 43,000 from 2024–25, and the words with the largest jump were kept. Subject terms that rose for their own reasons, such as new disease names, were removed by hand.</li>
+    <li><strong>Country is counted from any author's affiliation</strong>, so an international paper counts for each country on it.</li>
+    <li><strong>The most recent months are still being indexed</strong> and may shift.</li>
+  </ul>
+</section>
+
+<footer>
+  <p>Data: <a href="https://europepmc.org/">Europe PMC</a> search counts for PubMed-indexed records with abstracts, pulled 2–3 October 2026. Publisher names: <a href="https://www.crossref.org/">Crossref</a>. The marker words: <span id="marklist"></span>.</p>
+  <p>The excess-vocabulary method follows Kobak and colleagues, <a href="https://arxiv.org/abs/2406.07016">Delving into ChatGPT usage in academic writing through excess vocabulary</a>. This page extends it to 2026 and to journals, publishers and countries. A <a href="../">companion page</a> covers computer science and engineering.</p>
+  <p>A personal demo. Not an official product of any organisation.</p>
+</footer>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script type="application/json" id="data">{"months":["2019-01","2019-02","2019-03","2019-04","2019-05","2019-06","2019-07","2019-08","2019-09","2019-10","2019-11","2019-12","2020-01","2020-02","2020-03","2020-04","2020-05","2020-06","2020-07","2020-08","2020-09","2020-10","2020-11","2020-12","2021-01","2021-02","2021-03","2021-04","2021-05","2021-06","2021-07","2021-08","2021-09","2021-10","2021-11","2021-12","2022-01","2022-02","2022-03","2022-04","2022-05","2022-06","2022-07","2022-08","2022-09","2022-10","2022-11","2022-12","2023-01","2023-02","2023-03","2023-04","2023-05","2023-06","2023-07","2023-08","2023-09","2023-10","2023-11","2023-12","2024-01","2024-02","2024-03","2024-04","2024-05","2024-06","2024-07","2024-08","2024-09","2024-10","2024-11","2024-12","2025-01","2025-02","2025-03","2025-04","2025-05","2025-06","2025-07","2025-08","2025-09","2025-10","2025-11","2025-12","2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07","2026-08","2026-09"],"any":[1.088,1.091,1.052,1.117,1.103,1.077,1.086,1.174,1.228,1.132,1.06,1.097,1.091,1.168,1.133,1.188,1.13,1.228,1.191,1.184,1.19,1.271,1.275,1.296,1.218,1.336,1.288,1.354,1.378,1.318,1.354,1.315,1.359,1.397,1.333,1.327,1.343,1.339,1.362,1.351,1.457,1.409,1.37,1.382,1.373,1.383,1.38,1.412,1.513,1.409,1.516,1.529,1.742,2.022,2.315,2.702,3.473,3.986,4.485,4.979,5.643,6.27,6.689,7.233,7.611,7.939,8.165,8.272,8.587,8.601,8.759,8.936,9.634,9.627,10.173,10.405,10.79,11.099,11.594,11.926,11.719,12.154,12.172,12.142,12.002,11.887,11.664,11.258,10.722,10.31,9.494,8.787,8.121],"words":{"delves":{"r":[0.68,0.46,0.46,0.5,0.56,0.45,0.26,0.23,0.31,0.35,0.27,0.33,0.3,0.3,0.23,0.22,0.21,0.41,0.49,0.65,0.46,0.46,0.43,0.67,0.65,0.69,0.57,0.65,0.61,0.51,0.47,0.5,0.57,0.7,0.66,0.64,0.64,0.52,0.58,0.47,0.62,0.54,0.6,0.83,1.04,1.11,0.87,0.68,0.83,1.07,1.37,1.41,1.57,2.2,4.01,6.41,10.58,14.01,18.91,22.7,28.25,34.11,37.76,41.58,41.32,43.18,41.73,41.11,38.71,37.15,34.41,31.29,29.25,26.93,25.31,20.91,18.95,16.31,15.0,13.38,11.69,10.33,9.1,8.13,8.13,7.47,7.26,5.51,4.53,3.55,3.35,3.29,3.07],"b":0.54,"peak":"2024-06","peakv":43.2,"last":3.3,"ctrl":false,"faded":true},"delve":{"r":[1.54,1.31,1.4,1.27,1.16,0.99,1.0,0.9,1.07,0.88,1.12,1.1,1.37,1.2,0.94,0.93,1.14,1.25,1.32,1.12,1.19,1.12,1.27,1.22,1.38,1.67,2.01,2.07,1.94,1.61,1.54,1.6,1.71,1.62,1.45,1.97,2.12,2.4,1.87,1.79,1.81,2.38,2.71,2.49,2.27,1.92,2.23,1.94,2.53,2.48,2.77,2.58,2.61,3.33,4.04,6.36,9.23,12.04,14.59,15.81,17.38,18.36,20.08,21.5,22.64,22.48,22.45,21.82,22.09,19.79,18.59,16.48,16.59,14.81,13.37,11.7,10.95,10.44,9.72,9.05,7.75,6.9,5.89,5.51,5.19,4.6,3.97,3.3,3.32,3.07,2.69,2.32,1.8],"b":1.6,"peak":"2024-05","peakv":22.6,"last":2.5,"ctrl":false,"faded":true},"showcasing":{"r":[0.77,0.75,0.72,0.85,0.75,0.88,0.78,0.87,0.84,0.9,1.03,0.92,0.8,0.89,0.99,1.26,1.21,1.44,1.41,1.21,0.98,1.2,1.52,1.62,1.23,1.16,1.23,1.33,1.3,1.33,1.34,1.33,1.35,1.4,1.57,1.47,1.66,1.72,1.7,1.61,1.57,1.78,1.67,1.57,1.59,1.63,1.63,1.79,2.14,2.25,2.14,1.96,2.27,3.13,4.16,5.14,6.47,8.52,10.35,12.2,14.49,18.44,21.58,24.42,25.96,26.64,25.65,25.61,25.8,25.43,24.67,23.58,23.25,22.22,21.54,20.59,18.9,17.57,16.41,15.23,14.41,13.7,12.72,11.06,9.58,9.08,8.21,7.97,7.0,6.31,5.32,4.95,4.76],"b":1.31,"peak":"2024-06","peakv":26.6,"last":5.6,"ctrl":false,"faded":true},"intricate":{"r":[11.69,9.9,10.1,9.53,10.65,10.63,10.63,10.5,10.94,11.41,11.46,11.59,11.75,11.75,11.67,11.77,11.39,11.78,11.34,11.83,11.94,13.02,13.07,13.25,12.83,13.35,13.28,13.44,14.22,13.99,13.87,13.4,13.4,13.48,13.56,13.69,13.95,13.65,13.58,13.29,13.18,13.6,13.43,13.84,13.23,13.6,12.76,13.42,14.39,15.11,15.29,14.5,16.78,18.86,24.0,30.04,39.61,50.11,62.57,73.92,84.13,93.65,99.42,103.13,105.52,110.38,112.65,111.33,106.13,101.73,96.43,92.58,89.48,87.44,85.03,82.91,79.09,75.54,72.02,68.54,63.9,58.89,54.69,51.59,48.47,45.34,42.56,40.03,37.01,34.17,30.72,27.05,24.52],"b":12.62,"peak":"2024-07","peakv":112.7,"last":29.7,"ctrl":false,"faded":true},"realm":{"r":[4.61,3.76,4.14,4.63,4.84,4.92,4.24,4.86,4.89,4.91,4.35,3.92,3.85,4.54,5.27,5.4,4.74,4.45,4.43,4.59,4.22,4.66,5.17,5.28,4.7,4.26,4.11,4.7,5.42,6.08,5.57,4.94,4.42,4.22,3.69,3.9,4.24,4.46,4.33,4.4,4.78,4.77,5.0,4.7,4.85,4.34,4.7,4.7,5.07,5.04,5.09,4.86,5.12,5.99,6.85,7.89,10.35,13.91,18.26,21.23,23.87,25.59,26.38,27.36,26.66,26.31,24.1,23.34,22.11,20.88,19.27,18.03,17.58,16.64,15.3,13.37,12.1,10.47,10.13,9.31,9.07,7.86,7.08,6.44,6.13,5.87,5.17,4.72,4.04,3.45,3.29,3.15,3.28],"b":4.63,"peak":"2024-04","peakv":27.4,"last":3.4,"ctrl":false,"faded":true},"meticulous":{"r":[6.4,5.56,5.68,5.11,5.12,4.71,4.59,4.61,5.33,5.51,5.43,4.84,4.94,5.26,5.23,5.42,5.4,5.78,6.2,6.31,6.37,5.86,5.63,6.21,6.61,6.61,5.5,5.54,6.24,6.57,6.18,5.78,6.19,6.38,6.07,5.78,5.86,5.8,5.58,4.88,5.36,5.21,5.48,5.03,5.17,4.96,5.41,5.26,5.28,5.06,4.86,5.29,5.57,6.29,7.37,7.94,9.8,11.52,13.57,14.68,15.37,15.99,17.14,17.64,18.84,18.22,19.16,18.69,19.97,18.85,17.66,15.78,15.57,15.92,15.63,14.63,13.36,14.01,14.12,15.16,14.54,14.94,14.95,15.06,15.85,16.1,16.16,16.04,15.39,15.78,15.11,15.19,13.48],"b":5.62,"peak":"2024-09","peakv":20.0,"last":14.8,"ctrl":false,"faded":false},"garnered":{"r":[5.37,4.5,4.23,4.16,4.05,4.15,3.78,4.0,4.14,4.12,3.95,3.81,3.89,4.46,4.54,5.02,5.24,5.51,5.64,5.4,5.41,5.39,5.39,5.11,4.68,4.8,5.22,5.21,5.13,4.9,5.15,5.31,6.16,6.22,6.34,5.74,6.03,5.35,5.01,4.38,5.2,5.84,6.23,5.89,6.15,6.39,6.86,6.56,6.56,6.04,6.51,7.05,8.48,10.04,11.5,14.18,17.03,20.75,24.21,27.79,29.33,30.61,31.29,34.07,35.52,35.8,36.24,38.01,41.13,42.69,42.57,42.44,44.4,46.36,47.65,46.99,46.61,46.01,43.69,43.03,40.4,39.68,35.47,32.22,29.49,27.51,26.38,23.21,20.69,18.69,17.53,16.9,15.11],"b":5.22,"peak":"2025-03","peakv":47.7,"last":17.1,"ctrl":false,"faded":true},"unveiled":{"r":[6.82,6.44,6.38,5.97,6.9,7.01,7.71,6.95,7.66,7.32,7.48,7.05,7.27,7.52,7.43,7.72,7.62,7.62,7.0,6.87,7.36,7.82,8.09,8.16,8.04,8.38,7.88,8.22,8.04,8.49,8.87,9.43,9.61,9.35,8.34,8.2,8.6,8.93,8.77,8.29,8.59,8.6,8.67,8.72,9.41,8.91,9.34,8.52,8.89,9.27,9.55,9.64,9.07,9.4,10.27,11.77,14.9,19.37,23.42,25.96,27.46,30.3,33.02,35.41,36.11,35.15,33.52,31.08,29.55,27.12,25.61,23.66,22.09,20.26,19.72,19.09,17.61,16.21,13.99,12.69,11.09,11.05,10.25,9.51,8.84,8.49,8.06,7.5,6.84,6.35,5.5,4.99,4.21],"b":8.07,"peak":"2024-05","peakv":36.1,"last":5.4,"ctrl":false,"faded":true},"pivotal":{"r":[51.35,52.32,51.35,51.78,48.95,49.61,47.78,49.88,49.55,50.17,49.78,51.63,52.74,54.8,52.1,51.27,50.1,52.44,53.11,53.62,52.88,53.84,53.21,54.38,54.56,56.78,56.56,56.47,55.23,55.52,55.98,55.45,55.21,55.38,55.92,57.25,57.13,57.89,57.49,57.23,57.6,57.11,57.37,55.01,54.36,53.31,53.85,54.43,54.99,55.89,54.65,53.61,53.11,54.49,56.8,62.16,71.24,85.96,102.92,117.47,132.68,148.93,164.97,178.96,187.75,197.9,196.63,193.54,186.28,180.45,178.02,173.97,179.12,180.74,181.66,180.59,181.81,182.13,184.49,182.47,182.98,176.93,175.94,172.62,174.19,170.0,168.99,162.62,154.87,143.91,132.92,122.4,112.72],"b":54.07,"peak":"2024-06","peakv":197.9,"last":129.6,"ctrl":false,"faded":false},"tapestry":{"r":[0.0,0.0,0.0,0.0,0.07,0.19,0.19,0.12,0.12,0.16,0.23,0.15,0.14,0.06,0.03,0.14,0.24,0.27,0.13,0.06,0.06,0.15,0.15,0.15,0.09,0.09,0.05,0.12,0.15,0.15,0.12,0.06,0.06,0.06,0.12,0.15,0.11,0.09,0.08,0.12,0.12,0.18,0.15,0.12,0.03,0.03,0.06,0.09,0.11,0.11,0.14,0.09,0.09,0.15,0.28,0.28,0.28,0.26,0.47,0.5,0.62,0.56,0.61,0.58,0.6,0.67,0.8,0.86,0.7,0.51,0.47,0.47,0.47,0.35,0.4,0.45,0.47,0.36,0.27,0.16,0.24,0.22,0.3,0.24,0.25,0.17,0.17,0.21,0.18,0.15,0.1,0.1,0.05],"b":0.11,"peak":"2024-08","peakv":0.9,"last":0.1,"ctrl":false,"faded":true},"underscores":{"r":[9.47,9.94,9.5,9.93,9.51,10.05,9.6,9.59,9.32,9.17,9.28,8.86,8.38,8.84,8.82,8.72,8.26,9.08,9.93,10.39,10.13,9.73,9.56,9.61,9.95,10.22,10.4,10.86,10.61,10.66,10.57,10.78,10.51,10.39,9.85,9.47,9.49,9.89,10.55,10.43,10.49,10.47,10.51,10.26,10.03,10.18,10.11,10.62,11.52,11.1,11.48,11.3,13.23,15.05,18.63,23.51,33.39,47.05,62.04,71.66,83.79,98.34,115.74,130.49,140.11,149.66,156.85,166.54,173.17,179.12,180.59,184.07,189.16,195.44,201.53,205.48,212.58,216.22,219.79,220.72,222.81,223.75,221.13,220.01,214.43,208.07,199.14,192.54,182.88,171.04,155.26,138.97,120.3],"b":9.91,"peak":"2025-10","peakv":223.8,"last":147.9,"ctrl":false,"faded":false},"underscore":{"r":[14.76,14.1,13.98,13.53,14.27,13.68,13.87,13.72,14.42,14.87,14.54,14.22,13.38,14.21,14.66,15.72,15.24,15.68,15.2,15.09,14.81,14.98,15.79,16.42,16.45,16.46,15.43,16.28,15.74,17.05,16.76,17.1,16.29,16.89,16.95,17.67,16.53,16.53,16.67,17.41,16.85,16.24,15.93,15.97,16.02,16.17,15.9,15.37,15.03,16.11,16.97,16.94,17.64,19.91,23.98,27.08,32.87,39.1,46.93,54.51,65.51,74.64,83.87,92.04,104.96,116.42,123.51,127.3,132.26,140.14,147.06,152.07,159.18,168.61,180.0,191.13,201.24,213.96,223.38,235.85,241.34,248.26,249.88,251.25,245.42,240.1,235.42,228.58,217.23,200.78,184.54,165.42,148.5],"b":15.59,"peak":"2025-12","peakv":251.2,"last":176.7,"ctrl":false,"faded":false},"underscoring":{"r":[5.2,5.69,5.13,4.96,4.6,4.67,4.55,4.57,4.55,4.69,4.49,4.98,5.02,5.26,5.26,5.45,5.41,5.3,5.44,5.46,5.54,5.28,5.18,4.88,4.7,5.23,5.65,5.93,5.92,5.99,6.66,6.65,6.53,6.05,5.62,6.28,6.5,7.01,6.31,6.53,6.88,6.65,6.29,5.88,6.34,6.4,6.26,6.47,6.48,6.79,6.63,6.67,7.3,8.5,9.26,10.59,13.21,17.14,21.28,25.85,30.59,34.89,39.41,45.34,51.88,57.36,61.47,64.19,67.23,69.21,73.71,80.61,88.07,92.43,96.85,101.55,106.89,111.84,117.72,125.4,132.56,143.66,158.04,170.81,176.08,178.76,177.09,175.8,168.39,162.68,153.37,141.52,128.57],"b":5.7,"peak":"2026-02","peakv":178.8,"last":147.1,"ctrl":false,"faded":false},"synthesizes":{"r":[3.24,3.13,3.24,3.19,3.07,2.97,3.17,3.93,4.51,4.07,3.66,3.09,3.48,3.5,3.26,3.6,3.62,3.97,3.41,3.86,4.05,4.26,3.88,3.86,3.92,4.13,4.34,4.16,4.04,3.79,3.88,3.3,3.65,3.86,4.41,4.1,4.21,4.57,4.29,4.32,4.19,4.62,4.32,4.23,4.24,4.23,3.98,4.11,4.34,4.39,4.14,4.12,4.75,5.03,5.35,5.01,4.79,5.04,5.13,5.76,6.43,7.96,8.54,9.02,8.71,9.48,10.22,11.22,12.09,12.26,13.04,14.29,16.58,16.99,18.29,19.77,25.8,32.96,40.21,46.88,52.34,59.08,65.15,71.88,77.55,84.14,88.81,92.92,94.27,98.03,100.02,100.21,99.28],"b":3.9,"peak":"2026-08","peakv":100.2,"last":98.7,"ctrl":false,"faded":false},"aligns":{"r":[2.56,2.97,3.1,3.35,3.4,3.18,3.03,2.87,2.99,3.51,3.25,3.19,2.63,2.78,2.72,2.57,2.86,2.95,3.33,3.14,3.04,2.96,3.23,3.32,3.2,3.19,3.14,3.44,3.12,3.47,3.46,3.51,3.5,3.66,3.81,3.66,3.52,3.42,3.58,3.62,3.89,3.98,4.17,4.23,4.13,3.98,3.84,3.94,4.17,4.19,4.2,4.08,4.48,5.13,5.99,6.95,7.78,8.24,8.75,9.69,11.28,12.8,14.04,15.0,15.07,15.5,15.5,16.39,16.83,17.14,17.6,17.84,19.89,21.17,21.87,21.0,22.38,23.82,25.5,25.51,25.84,25.91,26.72,28.05,29.3,29.91,29.14,29.05,27.98,27.6,26.1,25.15,25.38],"b":3.39,"peak":"2026-02","peakv":29.9,"last":26.5,"ctrl":false,"faded":false},"aligning":{"r":[4.27,4.68,4.5,4.68,4.45,4.6,4.69,4.78,5.25,5.38,5.12,4.85,4.44,4.41,4.2,4.12,3.9,3.99,4.6,4.34,4.22,3.93,4.38,4.67,5.07,5.54,5.68,4.98,5.06,5.21,5.73,5.55,5.03,4.92,5.08,4.82,4.9,4.88,5.21,5.18,5.68,6.0,5.72,5.15,5.0,4.96,5.41,5.58,6.17,6.36,6.41,6.08,6.31,6.15,7.15,6.91,8.08,8.72,9.98,11.27,13.0,15.46,17.67,19.16,20.68,21.71,22.65,22.46,22.78,23.75,26.52,27.55,29.71,29.79,31.94,33.23,34.31,35.14,35.96,39.77,40.91,42.29,41.37,41.8,41.18,40.68,40.93,41.24,40.28,37.93,35.67,32.93,31.2],"b":4.96,"peak":"2025-10","peakv":42.3,"last":34.9,"ctrl":false,"faded":false},"underexplored":{"r":[2.56,3.22,3.3,3.74,3.67,4.27,4.53,4.83,4.83,5.17,4.95,4.26,3.83,4.18,4.88,5.02,4.76,4.63,4.53,4.85,4.69,4.77,4.89,5.54,5.87,6.11,5.48,5.16,5.31,5.43,5.8,5.64,6.22,6.47,7.19,7.52,7.11,6.63,6.46,6.72,6.5,6.33,6.49,6.45,6.28,6.98,7.57,7.92,7.41,7.27,8.01,8.34,8.59,8.35,8.5,8.97,8.91,10.72,11.45,11.93,11.92,14.01,17.25,17.85,17.86,18.16,20.41,22.13,24.32,27.45,31.4,35.9,41.05,45.92,52.78,58.8,66.61,71.79,80.28,88.1,94.07,96.89,98.07,99.45,98.32,96.58,94.61,91.06,89.95,90.72,87.78,83.74,75.17],"b":5.56,"peak":"2025-12","peakv":99.5,"last":83.5,"ctrl":false,"faded":false},"leverages":{"r":[3.33,3.18,3.87,4.1,4.26,3.84,3.95,4.18,4.44,4.62,4.3,4.22,3.97,4.24,3.96,4.01,3.82,3.82,3.98,4.3,4.4,4.49,4.9,5.46,5.63,5.15,4.75,4.78,5.02,5.03,5.09,5.71,6.74,6.9,6.86,5.95,5.45,5.42,6.16,6.72,6.71,6.61,7.29,7.68,7.69,6.83,6.83,6.93,7.4,7.1,7.33,7.97,8.51,9.39,10.15,11.05,12.75,13.45,14.07,13.57,14.31,15.64,16.85,17.86,17.97,19.09,21.51,23.37,24.98,26.14,28.7,29.71,31.85,33.28,35.45,36.18,38.1,38.7,42.98,44.55,45.52,43.8,43.33,43.86,44.82,43.95,43.64,39.35,38.68,35.88,34.49,33.18,32.4],"b":5.31,"peak":"2025-09","peakv":45.5,"last":34.2,"ctrl":false,"faded":false},"leveraging":{"r":[8.79,9.42,9.04,9.62,9.58,10.66,10.46,11.83,11.75,13.01,12.31,12.16,10.72,10.54,10.57,11.16,11.32,11.53,12.36,13.48,13.97,14.9,14.67,14.97,14.07,14.3,14.64,15.76,16.85,17.2,17.36,15.81,16.1,16.46,18.46,18.66,18.67,17.89,18.09,17.88,18.38,19.54,19.51,19.81,19.72,20.11,20.59,20.28,20.86,20.56,20.93,21.22,23.34,25.21,27.97,31.23,35.78,40.33,45.2,47.32,51.31,53.94,59.64,64.23,70.91,74.68,80.95,82.95,85.82,83.75,85.92,87.45,93.07,97.4,103.9,108.49,111.65,114.65,122.39,124.26,125.47,119.7,120.6,116.75,116.96,113.85,111.85,106.01,101.43,97.75,91.9,86.08,78.71],"b":15.19,"peak":"2025-09","peakv":125.5,"last":89.0,"ctrl":false,"faded":false},"transformative":{"r":[3.84,4.34,3.97,3.95,3.52,3.81,3.92,4.31,4.53,4.55,4.8,4.61,4.69,4.05,4.27,4.32,4.42,4.62,4.52,5.23,5.01,5.5,5.12,5.22,4.55,4.74,5.19,5.96,6.18,5.77,6.02,5.66,5.7,5.13,5.32,5.44,5.7,5.64,6.27,6.07,7.14,6.72,7.01,6.06,5.76,5.61,5.85,6.23,6.78,6.66,6.79,6.56,6.65,6.95,7.49,8.54,9.65,11.27,13.11,15.36,17.41,19.22,20.64,22.5,23.44,24.03,23.85,24.57,25.3,26.44,26.35,26.93,31.11,36.58,42.81,46.56,51.49,55.72,58.14,58.93,59.11,58.0,57.25,56.8,57.12,55.8,53.15,50.64,48.21,45.61,42.58,40.03,37.4],"b":5.25,"peak":"2025-09","peakv":59.1,"last":41.8,"ctrl":false,"faded":false},"integrates":{"r":[19.62,18.59,17.91,17.09,16.68,16.81,17.36,18.04,18.28,17.9,17.27,17.58,17.57,17.82,17.45,17.79,17.38,16.61,16.31,16.84,17.31,16.21,15.68,15.93,17.09,17.6,17.86,17.79,18.28,18.2,18.98,19.03,19.04,17.88,18.94,19.28,20.37,19.71,19.72,18.68,19.46,20.25,21.83,21.29,20.32,19.8,19.58,20.06,19.77,19.98,19.71,20.37,20.32,21.75,21.92,22.7,24.78,27.37,30.05,29.82,31.84,33.44,35.39,35.44,37.9,40.15,44.52,47.28,50.33,52.99,55.92,59.24,65.26,71.37,81.25,88.68,98.33,103.79,118.93,128.81,140.13,144.33,155.31,168.0,181.47,189.86,200.62,206.32,213.82,215.01,215.31,215.91,213.83],"b":18.36,"peak":"2026-08","peakv":215.9,"last":214.5,"ctrl":false,"faded":false},"necessitating":{"r":[9.13,8.74,8.29,8.03,8.48,8.8,9.09,9.16,10.47,10.58,9.97,9.53,10.16,10.5,9.56,9.48,9.75,10.22,9.12,9.42,9.91,11.4,11.89,11.92,11.28,11.36,11.61,11.71,11.31,10.75,10.92,10.56,10.46,10.11,9.76,10.28,11.13,11.82,11.73,11.34,11.78,12.21,11.65,11.94,11.46,11.69,11.06,10.99,11.81,11.63,12.21,12.02,12.64,14.13,15.6,19.47,23.32,28.86,31.76,34.07,36.98,42.19,46.56,51.24,54.98,58.59,61.87,64.95,69.02,69.8,68.42,67.12,68.59,70.77,74.38,76.36,79.72,80.3,80.54,79.6,79.09,77.74,74.49,70.08,67.66,66.98,65.8,64.38,62.23,60.25,56.67,52.62,46.8],"b":10.6,"peak":"2025-07","peakv":80.5,"last":54.2,"ctrl":false,"faded":false},"emphasizing":{"r":[17.91,17.19,17.42,16.79,17.19,16.63,17.21,17.49,16.7,16.34,15.59,15.95,16.06,15.75,15.94,15.91,16.47,17.0,16.51,16.62,17.71,18.64,18.8,18.44,18.16,18.17,18.87,20.38,21.31,20.98,20.1,20.27,20.28,20.92,20.33,21.2,21.17,22.05,22.4,22.7,22.16,21.37,21.5,21.7,21.01,20.86,20.55,20.6,20.53,19.91,20.45,21.27,23.18,25.61,28.96,34.13,39.86,46.48,54.75,65.43,77.78,91.51,104.98,115.54,122.01,126.37,129.72,133.98,134.31,135.61,134.73,140.28,150.73,161.36,171.72,177.09,180.92,179.75,176.72,174.1,173.65,170.59,167.47,162.09,159.69,156.29,150.71,141.69,136.03,128.85,121.94,114.1,107.26],"b":19.07,"peak":"2025-05","peakv":180.9,"last":118.8,"ctrl":false,"faded":false},"surpassing":{"r":[2.3,2.36,2.1,2.13,2.32,2.42,2.47,2.21,2.32,2.08,1.95,2.07,2.14,2.39,2.33,2.35,2.39,2.58,3.21,3.38,3.1,2.7,2.71,2.72,2.7,2.6,2.95,3.01,3.05,2.94,3.34,3.24,3.34,2.87,3.11,3.06,3.05,2.92,2.75,2.87,3.14,3.14,3.37,3.51,3.81,3.62,3.29,3.29,3.65,3.71,4.04,4.5,4.9,5.34,6.97,9.31,12.28,14.08,16.05,18.76,20.77,23.18,25.88,28.17,29.22,29.12,30.44,31.79,31.24,30.4,29.83,30.12,29.64,31.28,32.31,34.23,35.36,37.09,40.06,40.71,41.31,39.34,37.92,37.01,35.12,34.71,33.43,33.56,31.29,28.6,25.61,23.73,22.02],"b":2.84,"peak":"2025-09","peakv":41.3,"last":25.5,"ctrl":false,"faded":false},"outperforming":{"r":[4.01,3.76,3.89,3.85,3.85,3.65,4.08,4.7,4.95,4.81,4.21,4.18,4.1,4.45,4.46,4.62,4.21,4.28,4.4,4.59,4.47,4.41,4.95,5.39,5.18,5.37,5.09,6.07,6.07,6.4,5.94,6.27,6.56,6.87,7.19,7.2,6.82,6.53,6.77,6.63,6.55,6.42,7.59,7.71,7.86,7.61,7.75,8.18,7.84,7.67,7.94,8.45,9.19,9.74,10.18,10.97,11.01,12.32,12.63,13.93,14.08,15.47,15.42,16.16,17.35,18.75,20.98,21.54,24.08,26.79,29.71,31.94,33.89,36.74,39.29,44.02,49.63,53.68,59.12,64.4,67.78,68.14,70.43,76.64,79.73,80.09,81.3,83.7,86.7,85.14,83.79,78.57,75.04],"b":5.69,"peak":"2026-05","peakv":86.7,"last":80.6,"ctrl":false,"faded":false},"encompassing":{"r":[13.73,15.89,15.55,16.05,15.47,16.32,17.06,17.81,18.27,17.59,16.88,15.35,15.71,15.15,16.13,16.93,17.38,17.14,16.49,15.96,16.02,16.22,17.16,17.32,17.2,17.67,18.14,19.5,18.98,18.85,18.16,18.06,18.13,19.4,20.0,19.69,17.97,17.91,17.84,17.58,16.98,17.14,17.24,17.3,17.01,18.03,17.94,18.14,17.82,17.89,17.61,17.37,18.36,21.07,24.07,28.74,37.17,46.19,55.68,62.25,68.91,75.52,80.43,83.69,85.12,87.19,88.6,86.13,83.54,78.89,78.67,75.89,77.88,78.23,80.14,79.14,77.92,75.61,75.91,77.16,78.99,81.48,84.62,88.25,89.24,88.88,89.5,88.0,88.44,86.44,85.64,83.96,82.22],"b":17.35,"peak":"2026-03","peakv":89.5,"last":84.5,"ctrl":false,"faded":false},"elucidates":{"r":[4.69,5.74,5.65,5.99,5.83,5.65,5.08,4.93,4.6,5.22,4.75,5.07,4.67,5.25,5.62,5.55,5.37,5.3,5.5,5.78,5.43,5.64,5.21,5.41,5.23,5.38,5.66,5.91,6.34,6.32,6.04,6.03,6.36,6.99,6.89,6.1,5.47,5.31,6.11,6.99,7.71,8.17,8.1,7.84,7.56,7.42,7.39,7.55,7.63,7.57,7.17,7.2,7.21,7.48,7.76,8.61,10.04,11.34,13.36,15.03,16.88,17.17,18.85,20.68,23.59,24.43,24.69,25.53,26.21,26.73,27.1,26.41,26.27,26.04,27.48,29.88,31.59,33.45,35.74,37.52,38.24,38.14,38.68,40.29,40.84,42.21,43.74,44.33,42.92,39.95,37.67,35.18,32.45],"b":6.07,"peak":"2026-04","peakv":44.3,"last":36.5,"ctrl":false,"faded":false},"fostering":{"r":[7.51,9.02,8.77,8.83,8.11,7.31,7.33,7.11,8.13,7.9,7.6,6.87,6.84,7.31,7.52,8.19,7.94,7.86,7.03,7.48,7.88,8.85,9.17,8.87,8.37,7.54,7.89,8.73,9.07,9.51,9.14,9.47,9.73,9.8,9.34,9.03,8.91,9.7,9.76,10.02,10.03,9.84,9.68,9.87,9.92,9.55,9.8,10.27,11.34,10.45,11.12,11.05,12.1,12.36,12.99,14.54,16.35,19.51,21.65,24.64,27.16,30.58,33.49,36.44,38.3,41.27,41.5,44.28,43.02,45.35,44.27,46.66,49.39,52.84,56.53,59.7,62.3,62.85,62.87,62.03,60.93,59.15,57.23,57.14,56.3,57.36,54.45,50.58,46.24,44.52,41.58,37.45,32.08],"b":8.74,"peak":"2025-07","peakv":62.9,"last":38.8,"ctrl":false,"faded":false},"foundational":{"r":[5.29,5.19,5.47,5.58,5.83,5.9,6.25,6.6,6.6,6.16,5.88,6.01,6.26,6.26,6.29,5.97,5.97,6.05,6.7,7.13,7.3,7.56,8.02,8.38,8.61,8.0,7.85,7.86,8.23,8.14,8.29,8.4,8.81,8.82,8.64,8.88,8.57,8.39,8.18,8.87,9.45,9.42,8.91,8.72,8.44,8.75,9.27,9.41,9.44,9.52,9.65,9.45,9.63,10.6,11.46,11.03,10.85,11.65,13.68,14.72,15.6,16.88,17.69,18.19,17.86,18.76,20.27,21.36,22.3,22.58,22.88,22.89,24.09,24.42,24.71,24.71,26.39,29.25,31.19,32.97,35.62,38.01,40.33,41.96,44.6,46.35,47.63,48.02,49.39,49.21,49.92,48.15,48.88],"b":7.67,"peak":"2026-07","peakv":49.9,"last":49.1,"ctrl":false,"faded":false},"safeguarding":{"r":[1.62,1.6,1.81,1.65,1.86,1.82,2.11,1.96,1.95,1.88,2.06,2.06,2.24,2.05,2.14,2.23,2.59,2.66,2.72,2.72,2.92,2.93,2.78,2.53,2.38,2.19,2.3,2.29,2.61,2.52,2.71,2.82,2.91,2.6,2.48,2.32,2.56,2.52,2.79,3.06,3.13,3.32,2.98,3.46,3.43,3.47,3.28,2.82,3.1,2.86,3.12,3.11,3.09,3.55,4.56,5.29,5.84,6.22,7.17,7.84,8.32,8.84,10.04,11.11,11.59,11.63,10.66,11.42,11.7,12.46,11.61,11.19,10.99,11.15,11.16,11.61,11.52,11.71,11.58,12.57,12.64,13.3,13.17,13.73,12.74,12.79,12.1,12.78,12.1,12.11,11.51,11.55,11.08],"b":2.56,"peak":"2025-12","peakv":13.7,"last":11.6,"ctrl":false,"faded":false},"offering":{"r":[32.42,34.98,34.53,34.68,34.41,33.78,34.92,34.76,36.23,35.75,34.46,34.13,34.34,35.23,34.77,34.19,34.97,36.45,38.01,38.3,38.06,37.76,38.32,38.88,38.62,37.84,36.0,36.77,37.58,38.82,38.62,38.04,38.93,39.72,40.3,39.72,38.83,38.32,39.39,40.19,40.95,40.67,40.36,39.36,39.27,38.06,40.02,40.16,43.42,43.3,44.71,43.54,44.38,46.23,51.58,59.69,69.64,80.59,91.83,103.77,116.0,128.52,140.71,157.28,170.73,186.82,194.17,209.22,218.43,232.01,244.03,260.47,280.27,298.04,316.56,339.71,360.43,381.55,392.72,404.38,409.99,415.5,418.04,418.63,408.83,399.72,383.11,365.29,345.92,328.92,309.44,285.59,260.59],"b":37.64,"peak":"2025-12","peakv":418.6,"last":297.4,"ctrl":false,"faded":false},"highlighting":{"r":[62.87,63.04,63.49,63.56,63.52,63.81,63.62,64.45,62.64,61.78,61.9,63.85,64.02,64.04,64.97,66.97,67.23,67.42,68.83,70.82,72.41,73.31,74.51,74.72,75.2,75.85,77.43,78.0,77.27,78.55,79.52,81.26,79.34,79.91,78.76,79.03,78.12,79.79,81.98,83.07,82.92,82.66,81.29,81.61,81.92,83.08,83.93,82.97,83.99,82.79,85.17,88.52,92.56,96.62,100.7,109.03,115.04,121.69,128.87,136.1,146.73,159.01,174.49,189.62,204.3,218.77,231.48,249.02,264.06,279.39,292.66,311.49,333.38,354.7,375.79,393.92,417.17,436.59,451.15,456.18,461.41,471.04,479.44,480.28,481.85,486.25,492.03,496.66,490.96,485.97,469.98,452.67,436.56],"b":74.21,"peak":"2026-04","peakv":496.7,"last":463.2,"ctrl":false,"faded":false},"nuanced":{"r":[5.97,6.92,6.33,6.59,6.39,7.54,7.58,6.87,6.17,6.23,6.68,7.68,7.52,7.72,7.51,7.76,7.78,7.3,6.88,6.68,6.94,7.6,8.34,8.17,7.9,8.01,8.51,8.91,8.76,8.67,8.74,9.45,10.12,10.72,9.85,9.01,8.5,8.53,9.17,8.88,9.62,9.61,10.13,9.38,8.98,9.42,10.29,10.24,10.18,9.4,9.41,9.88,10.69,11.21,10.76,11.16,12.09,14.23,14.99,18.22,20.58,24.95,26.35,29.31,31.25,33.65,33.28,33.09,32.43,32.19,30.96,30.08,28.75,29.12,28.83,28.7,28.07,27.92,29.11,29.44,30.62,30.12,30.38,28.84,28.04,27.59,27.26,26.75,24.92,23.69,22.45,21.41,20.55],"b":8.31,"peak":"2024-06","peakv":33.6,"last":22.2,"ctrl":false,"faded":false},"multifaceted":{"r":[16.29,16.26,16.32,16.15,16.44,17.24,17.19,17.3,16.42,17.37,17.08,16.48,16.26,16.25,16.91,15.6,15.62,15.89,17.19,17.3,18.48,18.48,18.99,18.87,19.38,19.1,18.57,18.62,19.23,19.02,19.62,19.83,20.45,20.07,19.31,20.23,21.07,22.2,20.64,18.72,18.25,18.84,19.04,18.19,18.55,19.78,20.82,20.21,20.34,19.76,20.51,20.82,21.96,23.34,24.4,25.52,26.8,30.51,36.36,42.08,47.41,51.11,55.19,56.45,58.28,59.32,60.44,60.74,60.95,59.85,60.32,59.83,63.54,64.07,65.04,63.84,64.6,64.9,64.75,64.09,64.77,63.52,65.11,63.29,63.88,59.76,57.94,54.59,52.32,48.33,44.39,40.87,38.77],"b":18.46,"peak":"2025-11","peakv":65.1,"last":43.8,"ctrl":false,"faded":false},"notably":{"r":[92.21,98.36,101.01,103.09,102.0,101.65,102.57,102.61,101.97,101.11,100.28,101.98,100.87,101.9,101.02,103.41,103.07,103.16,104.83,105.49,107.8,108.0,110.35,110.07,107.34,107.76,106.67,109.69,110.25,113.59,117.33,117.53,117.47,118.33,119.63,118.72,115.1,116.33,115.87,117.6,120.01,122.79,122.71,123.08,124.85,127.35,125.71,122.65,121.59,122.23,124.6,126.96,128.46,134.69,142.69,157.16,179.34,203.95,232.3,251.31,272.5,294.4,318.05,339.38,353.09,364.97,369.83,372.33,370.23,375.07,384.6,391.01,391.29,395.67,406.34,422.97,432.85,449.28,466.2,485.07,489.86,490.77,482.39,478.16,466.25,460.78,454.26,450.07,447.84,437.69,423.77,401.8,376.05],"b":111.13,"peak":"2025-10","peakv":490.8,"last":409.6,"ctrl":false,"faded":false},"crucial":{"r":[232.96,234.06,233.99,233.49,234.56,238.34,240.1,239.23,233.59,235.3,239.3,244.62,245.61,243.98,243.94,249.28,250.75,254.97,249.55,253.08,251.96,261.66,264.58,269.61,266.32,267.43,266.75,267.2,266.59,269.06,274.35,278.02,280.18,279.5,278.12,276.14,276.13,280.57,281.5,290.55,293.28,296.63,292.53,292.13,297.75,303.5,305.69,309.3,313.09,321.42,328.44,338.07,349.57,363.83,390.84,424.18,462.76,486.09,505.84,524.31,558.82,596.74,634.64,657.22,676.16,694.86,723.27,754.7,786.2,805.26,819.89,822.25,822.35,820.31,824.99,831.58,820.57,792.29,766.92,737.27,708.26,673.59,651.01,630.21,600.15,567.69,534.26,499.91,455.84,412.1,369.09,331.86,295.11],"b":267.22,"peak":"2025-04","peakv":831.6,"last":358.3,"ctrl":false,"faded":true},"however":{"r":[2173.63,2232.42,2239.62,2272.05,2271.25,2280.77,2273.6,2271.73,2263.52,2273.36,2295.12,2306.92,2292.08,2273.79,2283.72,2297.74,2298.45,2284.75,2283.17,2288.22,2288.05,2289.28,2280.62,2283.11,2278.91,2303.34,2313.37,2337.13,2330.19,2331.37,2329.54,2340.63,2353.51,2364.1,2369.82,2372.45,2359.6,2364.0,2372.14,2397.29,2400.25,2403.09,2412.92,2416.6,2428.4,2436.97,2446.25,2453.78,2440.03,2456.33,2463.13,2480.68,2477.74,2486.77,2497.79,2512.98,2524.57,2541.87,2546.12,2540.09,2530.86,2535.28,2546.75,2561.9,2559.25,2558.83,2551.85,2543.12,2540.39,2534.37,2548.85,2559.73,2564.16,2576.42,2593.14,2615.07,2620.66,2601.23,2606.76,2582.58,2561.5,2509.93,2485.46,2460.21,2457.81,2446.97,2460.86,2475.13,2506.25,2532.41,2554.51,2555.75,2533.52],"b":2330.84,"peak":"2025-05","peakv":2620.7,"last":2534.9,"ctrl":true,"faded":false},"therefore":{"r":[715.78,711.47,712.34,707.59,712.16,711.6,712.84,712.78,712.3,712.01,721.4,726.0,739.82,732.77,742.79,736.39,745.96,737.1,737.18,735.86,743.33,751.32,752.48,753.93,759.1,764.01,768.76,767.91,758.01,756.09,756.57,765.9,770.03,775.94,780.39,784.04,784.09,786.63,790.52,795.83,801.64,811.05,817.79,824.74,830.52,842.24,848.87,850.17,846.81,846.95,839.16,834.9,825.91,823.71,814.31,807.31,800.61,793.83,785.65,778.92,771.16,760.59,749.57,742.81,743.72,741.74,733.99,723.86,710.07,696.59,683.38,669.68,657.87,637.8,623.77,612.37,588.06,559.3,534.04,514.05,499.15,483.86,479.33,478.5,476.97,473.87,468.59,468.91,473.11,481.07,486.13,498.48,514.55],"b":765.56,"peak":"2022-12","peakv":850.2,"last":496.0,"ctrl":true,"faded":true},"significant":{"r":[1802.98,1800.56,1820.67,1833.05,1853.26,1842.75,1829.59,1809.31,1798.88,1814.15,1833.63,1837.0,1830.46,1816.92,1822.78,1815.62,1824.32,1827.19,1838.15,1844.79,1855.97,1869.1,1864.72,1857.1,1862.71,1871.07,1880.22,1879.8,1881.42,1884.7,1883.71,1882.59,1879.68,1881.12,1890.18,1887.33,1890.38,1884.13,1896.34,1904.36,1907.17,1912.83,1921.15,1926.81,1932.13,1918.73,1926.21,1929.18,1941.68,1941.38,1938.35,1932.98,1939.82,1958.25,1994.12,2039.65,2099.5,2151.14,2199.18,2227.68,2259.91,2307.08,2355.22,2393.92,2424.56,2457.56,2503.86,2550.68,2612.11,2661.6,2705.79,2742.05,2780.89,2823.78,2866.36,2903.61,2928.43,2932.33,2934.05,2920.28,2900.81,2876.66,2839.0,2800.52,2747.53,2707.85,2652.03,2602.71,2554.72,2525.4,2487.91,2396.53,2283.94],"b":1869.82,"peak":"2025-07","peakv":2934.1,"last":2417.8,"ctrl":true,"faded":false},"patients":{"r":[2856.31,2798.02,2789.54,2773.99,2795.34,2787.66,2773.32,2763.41,2777.67,2793.85,2796.37,2778.6,2817.84,2814.07,2838.04,2820.51,2898.56,2952.84,2987.48,2971.14,2973.8,2984.01,2986.21,2966.16,2984.44,2995.72,3005.11,2973.2,2959.1,2949.2,2935.55,2915.12,2911.19,2904.08,2928.33,2926.91,2965.01,2944.95,2967.13,2938.6,2919.65,2887.01,2887.55,2885.25,2881.82,2838.29,2819.18,2801.47,2826.71,2827.79,2834.52,2841.44,2851.3,2853.25,2844.6,2851.26,2871.35,2855.95,2843.6,2817.28,2851.35,2851.17,2860.75,2829.33,2832.74,2818.49,2810.26,2799.51,2810.97,2808.4,2804.3,2799.95,2814.68,2812.81,2809.85,2804.7,2821.7,2810.04,2790.33,2768.62,2767.42,2770.69,2761.95,2740.45,2718.7,2717.35,2718.76,2706.18,2682.97,2665.34,2668.44,2643.23,2607.41],"b":2895.32,"peak":"2021-03","peakv":3005.1,"last":2641.5,"ctrl":true,"faded":false}},"mark":["delves","delve","showcasing","underscores","underscoring","underscore","intricate","realm","synthesizes","aligns","aligning","underexplored","surpassing","leverages","transformative","necessitating","encompassing","elucidates","garnered","meticulous"],"total":10418514,"countries":[{"n":"Saudi Arabia","s22":1.15,"s24":11.9,"s25":16.77,"p25":26227},{"n":"Iraq","s22":0.47,"s24":10.91,"s25":16.45,"p25":4523},{"n":"Malaysia","s22":1.63,"s24":12.34,"s25":16.43,"p25":9713},{"n":"Pakistan","s22":1.3,"s24":12.12,"s25":16.05,"p25":12925},{"n":"India","s22":1.97,"s24":10.77,"s25":15.15,"p25":70989},{"n":"Nigeria","s22":1.92,"s24":10.27,"s25":15.15,"p25":5913},{"n":"Iran","s22":0.75,"s24":8.42,"s25":14.63,"p25":28507},{"n":"Ethiopia","s22":1.24,"s24":7.29,"s25":13.87,"p25":6905},{"n":"Indonesia","s22":0.63,"s24":9.28,"s25":13.41,"p25":7418},{"n":"Egypt","s22":1.01,"s24":8.33,"s25":13.17,"p25":17817},{"n":"South Korea","s22":1.05,"s24":9.45,"s25":13.07,"p25":43127},{"n":"Taiwan","s22":0.9,"s24":10.2,"s25":12.83,"p25":17381},{"n":"China","s22":0.82,"s24":8.18,"s25":11.93,"p25":434695},{"n":"Italy","s22":1.28,"s24":7.32,"s25":11.26,"p25":64334},{"n":"Brazil","s22":1.13,"s24":7.15,"s25":11.06,"p25":34766},{"n":"Mexico","s22":1.62,"s24":7.33,"s25":10.87,"p25":11870},{"n":"Spain","s22":1.3,"s24":6.95,"s25":10.64,"p25":46959},{"n":"United States","s22":2.32,"s24":6.88,"s25":9.96,"p25":280857},{"n":"Poland","s22":0.83,"s24":6.9,"s25":9.81,"p25":23930},{"n":"Turkey","s22":0.67,"s24":6.12,"s25":9.71,"p25":36086},{"n":"Switzerland","s22":1.86,"s24":6.12,"s25":9.2,"p25":28470},{"n":"Canada","s22":2.14,"s24":6.35,"s25":9.16,"p25":55858},{"n":"Australia","s22":1.83,"s24":6.11,"s25":9.06,"p25":50184},{"n":"Sweden","s22":1.54,"s24":5.9,"s25":9.06,"p25":23178},{"n":"Germany","s22":1.52,"s24":5.89,"s25":9.0,"p25":75637},{"n":"United Kingdom","s22":1.75,"s24":5.72,"s25":8.74,"p25":93192},{"n":"Netherlands","s22":1.75,"s24":5.76,"s25":8.53,"p25":34465},{"n":"France","s22":1.32,"s24":5.7,"s25":8.35,"p25":47040},{"n":"Russia","s22":0.87,"s24":4.97,"s25":7.61,"p25":11322},{"n":"Japan","s22":0.81,"s24":4.72,"s25":7.53,"p25":64815}],"publishers":[{"n":"Frontiers","s22":1.29,"s25":14.5,"p25":61163,"j":23},{"n":"Springer Nature","s22":1.41,"s25":13.32,"p25":146235,"j":55},{"n":"Wiley","s22":1.6,"s25":12.93,"p25":39180,"j":27},{"n":"MDPI","s22":1.02,"s25":12.34,"p25":121092,"j":49},{"n":"Elsevier","s22":1.19,"s25":12.05,"p25":107798,"j":87},{"n":"PLOS","s22":1.52,"s25":11.3,"p25":21661,"j":4},{"n":"American Chemical Society","s22":1.58,"s25":11.28,"p25":46796,"j":19},{"n":"Royal Society of Chemistry","s22":0.99,"s25":10.51,"p25":16239,"j":9}],"journals":[{"n":"Computers in biology and medicine","p":"Elsevier","s22":1.16,"s25":21.5,"p25":1744},{"n":"Cureus","p":"Springer Nature","s22":1.45,"s25":20.03,"p25":24068},{"n":"Journal of medical Internet research","p":"Other","s22":2.12,"s25":19.58,"p25":1583},{"n":"Frontiers in cellular and infection microbiology","p":"Frontiers","s22":1.43,"s25":17.18,"p25":1519},{"n":"BMC psychology","p":"Springer Nature","s22":0.63,"s25":17.16,"p25":1527},{"n":"Advanced materials","p":"Wiley","s22":3.04,"s25":17.04,"p25":3233},{"n":"Healthcare","p":"MDPI","s22":0.91,"s25":16.95,"p25":3368},{"n":"Frontiers in psychology","p":"Frontiers","s22":1.86,"s25":16.9,"p25":4277},{"n":"Frontiers in public health","p":"Frontiers","s22":1.43,"s25":16.7,"p25":5479},{"n":"Journal of environmental management","p":"Elsevier","s22":1.32,"s25":16.63,"p25":4522},{"n":"Frontiers in microbiology","p":"Frontiers","s22":1.54,"s25":16.54,"p25":3223},{"n":"Environmental pollution","p":"Elsevier","s22":1.01,"s25":16.32,"p25":1783},{"n":"International journal of environmental research and public health","p":"Other","s22":1.1,"s25":16.22,"p25":1899},{"n":"Frontiers in immunology","p":"Frontiers","s22":1.52,"s25":15.89,"p25":6984},{"n":"Behavioral sciences","p":"MDPI","s22":1.46,"s25":15.86,"p25":1784},{"n":"Small","p":"Wiley","s22":2.08,"s25":15.78,"p25":4905},{"n":"BMC medical education","p":"Springer Nature","s22":1.14,"s25":15.37,"p25":1906},{"n":"Water research","p":"Elsevier","s22":1.71,"s25":15.35,"p25":1753},{"n":"Frontiers in psychiatry","p":"Frontiers","s22":1.68,"s25":15.34,"p25":2236},{"n":"The Science of the total environment","p":"Elsevier","s22":1.11,"s25":15.32,"p25":3048},{"n":"Advanced science","p":"Wiley","s22":1.79,"s25":15.19,"p25":4399},{"n":"BMC nursing","p":"Springer Nature","s22":1.08,"s25":15.14,"p25":1592},{"n":"Ecotoxicology and environmental safety","p":"Elsevier","s22":0.64,"s25":14.86,"p25":2046},{"n":"BMC infectious diseases","p":"Springer Nature","s22":1.69,"s25":14.79,"p25":2002},{"n":"Environmental research","p":"Elsevier","s22":0.85,"s25":14.68,"p25":2452},{"n":"Life","p":"MDPI","s22":1.17,"s25":14.56,"p25":1964},{"n":"Environmental science & technology","p":"American Chemical Society","s22":1.83,"s25":14.54,"p25":2339},{"n":"BMJ case reports","p":"BMJ","s22":1.58,"s25":14.53,"p25":1720},{"n":"Frontiers in oncology","p":"Frontiers","s22":0.79,"s25":14.51,"p25":4619},{"n":"ACS nano","p":"American Chemical Society","s22":2.68,"s25":14.5,"p25":3082},{"n":"Frontiers in pharmacology","p":"Frontiers","s22":1.0,"s25":14.48,"p25":4012},{"n":"Clinical case reports","p":"Wiley","s22":0.88,"s25":14.48,"p25":1595},{"n":"Microorganisms","p":"MDPI","s22":1.62,"s25":14.43,"p25":2924},{"n":"Biomolecules","p":"MDPI","s22":1.45,"s25":14.33,"p25":1779},{"n":"BMC public health","p":"Springer Nature","s22":2.04,"s25":14.32,"p25":4792},{"n":"Biology","p":"MDPI","s22":1.39,"s25":14.24,"p25":1868},{"n":"Genes","p":"MDPI","s22":1.44,"s25":14.13,"p25":1529},{"n":"Journal of hazardous materials","p":"Elsevier","s22":1.26,"s25":14.05,"p25":4042},{"n":"Pharmaceuticals","p":"MDPI","s22":1.0,"s25":13.91,"p25":1956},{"n":"Frontiers in plant science","p":"Frontiers","s22":1.48,"s25":13.8,"p25":3203},{"n":"Biomedicines","p":"MDPI","s22":1.36,"s25":13.79,"p25":3132},{"n":"ACS applied materials & interfaces","p":"American Chemical Society","s22":1.85,"s25":13.55,"p25":5847},{"n":"Frontiers in cardiovascular medicine","p":"Frontiers","s22":0.97,"s25":13.55,"p25":1852},{"n":"Frontiers in medicine","p":"Frontiers","s22":1.16,"s25":13.53,"p25":4914},{"n":"Antioxidants","p":"MDPI","s22":0.88,"s25":13.51,"p25":1532},{"n":"Frontiers in nutrition","p":"Frontiers","s22":0.62,"s25":13.44,"p25":2738},{"n":"Environmental science and pollution research international","p":"Springer Nature","s22":0.91,"s25":13.33,"p25":1793},{"n":"RSC advances","p":"Royal Society of Chemistry","s22":0.66,"s25":13.31,"p25":3868},{"n":"Pharmaceutics","p":"MDPI","s22":1.14,"s25":13.15,"p25":1643},{"n":"Frontiers in pediatrics","p":"Frontiers","s22":0.81,"s25":13.05,"p25":1701},{"n":"Diagnostics","p":"MDPI","s22":0.8,"s25":12.9,"p25":3286},{"n":"Medicina","p":"MDPI","s22":0.73,"s25":12.81,"p25":2288},{"n":"BMC health services research","p":"Springer Nature","s22":2.24,"s25":12.8,"p25":1765},{"n":"Journal of the American Chemical Society","p":"American Chemical Society","s22":3.22,"s25":12.76,"p25":4663},{"n":"Viruses","p":"MDPI","s22":1.63,"s25":12.73,"p25":1649},{"n":"Children","p":"MDPI","s22":1.17,"s25":12.73,"p25":1736},{"n":"PeerJ","p":"Other","s22":1.29,"s25":12.67,"p25":1752},{"n":"Sensors","p":"MDPI","s22":1.22,"s25":12.63,"p25":7765},{"n":"Angewandte Chemie","p":"Wiley","s22":1.98,"s25":12.63,"p25":5944},{"n":"International journal of molecular sciences","p":"MDPI","s22":1.21,"s25":12.62,"p25":12340},{"n":"Cancers","p":"MDPI","s22":1.24,"s25":12.56,"p25":4084},{"n":"Analytical chemistry","p":"American Chemical Society","s22":1.28,"s25":12.3,"p25":3000},{"n":"Journal of colloid and interface science","p":"Elsevier","s22":1.29,"s25":12.28,"p25":3078},{"n":"Scientific reports","p":"Springer Nature","s22":1.26,"s25":12.22,"p25":47454},{"n":"Plants","p":"MDPI","s22":0.85,"s25":12.11,"p25":3889},{"n":"Journal of affective disorders","p":"Elsevier","s22":2.01,"s25":12.07,"p25":1698},{"n":"Nutrients","p":"MDPI","s22":0.94,"s25":11.96,"p25":3939},{"n":"Journal of clinical medicine","p":"MDPI","s22":0.48,"s25":11.78,"p25":9091},{"n":"Chemical science","p":"Royal Society of Chemistry","s22":2.63,"s25":11.73,"p25":2046},{"n":"Frontiers in endocrinology","p":"Frontiers","s22":1.13,"s25":11.72,"p25":2612},{"n":"BMC plant biology","p":"Springer Nature","s22":1.31,"s25":11.63,"p25":1944},{"n":"International journal of biological macromolecules","p":"Elsevier","s22":0.89,"s25":11.62,"p25":9899},{"n":"Cells","p":"MDPI","s22":1.48,"s25":11.54,"p25":2063},{"n":"International immunopharmacology","p":"Elsevier","s22":0.53,"s25":11.44,"p25":1801},{"n":"PloS one","p":"PLOS","s22":1.35,"s25":11.43,"p25":19137},{"n":"Nano letters","p":"American Chemical Society","s22":1.92,"s25":11.43,"p25":2223},{"n":"Langmuir","p":"American Chemical Society","s22":1.95,"s25":11.38,"p25":2943},{"n":"Ecology and evolution","p":"Wiley","s22":1.35,"s25":11.35,"p25":2000},{"n":"Frontiers in neurology","p":"Frontiers","s22":0.89,"s25":11.23,"p25":2503},{"n":"ACS omega","p":"American Chemical Society","s22":0.91,"s25":11.02,"p25":5292},{"n":"The journal of physical chemistry letters","p":"American Chemical Society","s22":1.51,"s25":10.91,"p25":1622},{"n":"Nature communications","p":"Springer Nature","s22":2.54,"s25":10.8,"p25":12154},{"n":"Nanomaterials","p":"MDPI","s22":0.95,"s25":10.77,"p25":1912},{"n":"BMC cancer","p":"Springer Nature","s22":0.97,"s25":10.7,"p25":2065},{"n":"Foods","p":"MDPI","s22":0.62,"s25":10.57,"p25":4398},{"n":"Food research international","p":"Other","s22":0.49,"s25":10.47,"p25":2148},{"n":"Polymers","p":"MDPI","s22":0.73,"s25":10.27,"p25":3387},{"n":"Science advances","p":"Other","s22":2.24,"s25":10.17,"p25":3107},{"n":"Frontiers in veterinary science","p":"Frontiers","s22":0.69,"s25":10.1,"p25":1980},{"n":"Journal of agricultural and food chemistry","p":"American Chemical Society","s22":0.42,"s25":10.0,"p25":2581},{"n":"Physical chemistry chemical physics","p":"Royal Society of Chemistry","s22":1.1,"s25":9.94,"p25":2233},{"n":"Inorganic chemistry","p":"American Chemical Society","s22":1.45,"s25":9.92,"p25":2450},{"n":"Heliyon","p":"Elsevier","s22":1.09,"s25":9.76,"p25":2409},{"n":"Molecules","p":"MDPI","s22":0.77,"s25":9.75,"p25":4829},{"n":"Communications biology","p":"Springer Nature","s22":1.82,"s25":9.69,"p25":1920},{"n":"IScience","p":"Elsevier","s22":1.99,"s25":9.6,"p25":2635},{"n":"BMC oral health","p":"Springer Nature","s22":0.15,"s25":9.55,"p25":2177},{"n":"Chemistry","p":"Wiley","s22":1.17,"s25":8.9,"p25":1943},{"n":"Animals","p":"MDPI","s22":0.6,"s25":8.83,"p25":3704},{"n":"Proceedings of the National Academy of Sciences of the United States of America","p":"Other","s22":3.32,"s25":8.68,"p25":3734},{"n":"Dalton transactions","p":"Royal Society of Chemistry","s22":1.15,"s25":8.32,"p25":1610},{"n":"Poultry science","p":"Elsevier","s22":0.45,"s25":8.31,"p25":1540},{"n":"Materials","p":"MDPI","s22":0.54,"s25":7.95,"p25":5709},{"n":"Scientific data","p":"Springer Nature","s22":2.59,"s25":7.57,"p25":2100},{"n":"Food chemistry","p":"Elsevier","s22":0.24,"s25":6.97,"p25":5565},{"n":"BMJ open","p":"BMJ","s22":1.46,"s25":6.64,"p25":4898},{"n":"Chemical communications","p":"Royal Society of Chemistry","s22":0.58,"s25":6.53,"p25":2955},{"n":"Organic letters","p":"American Chemical Society","s22":0.63,"s25":4.91,"p25":2442},{"n":"The Journal of organic chemistry","p":"American Chemical Society","s22":0.76,"s25":4.4,"p25":1864},{"n":"Science","p":"Other","s22":1.8,"s25":3.71,"p25":1642},{"n":"Zootaxa","p":"Other","s22":1.01,"s25":2.67,"p25":2021}]}</script>
+<script>
+(function(){
+const D=JSON.parse(document.getElementById('data').textContent);
+const mo=D.months, N=mo.length, NS='http://www.w3.org/2000/svg';
+const MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const mname=i=>MN[+mo[i].slice(5)-1]+' '+mo[i].slice(0,4);
+const tip=document.getElementById('tip');
+function showTip(html,x,y){tip.innerHTML=html;tip.hidden=false;const w=tip.offsetWidth/2+8;tip.style.left=Math.max(w,Math.min(innerWidth-w,x))+'px';tip.style.top=Math.max(60,y)+'px'}
+function hideTip(){tip.hidden=true}
+function el(n,a,p){const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e}
+function txt(p,x,y,s,a){const t=el('text',Object.assign({x:x,y:y},a||{}),p);t.textContent=s;return t}
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const fmt=n=>n.toLocaleString('en-IN');
+document.getElementById('marklist').textContent=D.mark.join(', ');
+
+/* generic time-series chart */
+function lineChart(id,series,opt){
+  const host=document.getElementById(id);
+  function draw(){
+    host.innerHTML='';
+    const W=host.clientWidth||600,H=opt.h||300,m={l:40,r:opt.r||16,t:16,b:26};
+    const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,height:H,role:'img','aria-label':opt.label},host);
+    const x=i=>m.l+(W-m.l-m.r)*i/(N-1), y=v=>H-m.b-(H-m.t-m.b)*v/opt.max;
+    opt.ticks.forEach(v=>{el('line',{x1:m.l,x2:W-m.r,y1:y(v),y2:y(v),stroke:css('--rule'),'stroke-width':1},svg);txt(svg,m.l-6,y(v)+4,v+(opt.unit||''),{'text-anchor':'end'})});
+    const step=W<520?2:1;
+    mo.forEach((s,i)=>{if(s.slice(5)==='01'&&((+s.slice(0,4)-2019)%step===0))txt(svg,x(i),H-8,s.slice(0,4),{'text-anchor':'start'})});
+    if(opt.event!=null){const ex=x(opt.event);el('line',{x1:ex,x2:ex,y1:m.t,y2:H-m.b,stroke:css('--muted'),'stroke-width':1,'stroke-dasharray':'3 3'},svg);
+      const right=ex<W*0.5;txt(svg,ex+(right?6:-6),m.t+10,W<520?'ChatGPT':'ChatGPT released, Nov 2022',{'text-anchor':right?'start':'end',class:'note'})}
+    series.forEach(s=>{
+      const pts=s.v.map((v,i)=>[x(i),y(v)]);
+      if(s.area)el('path',{d:'M'+pts.map(p=>p.join(',')).join('L')+`L${x(N-1)},${y(0)}L${x(0)},${y(0)}Z`,fill:css('--area')},svg);
+      el('path',{d:'M'+pts.map(p=>p.join(',')).join('L'),fill:'none',stroke:css(s.c),'stroke-width':2,'stroke-linejoin':'round','stroke-linecap':'round'},svg);
+      (s.labels||[]).forEach(L=>{const i=L.i;el('circle',{cx:x(i),cy:y(s.v[i]),r:4,fill:css(s.c),stroke:css('--surface'),'stroke-width':2},svg);
+        txt(svg,x(i)+(L.dx||0),y(s.v[i])+(L.dy||-10),L.t,{'text-anchor':L.a||'middle',class:'lab'})});
+    });
+    const cross=el('line',{y1:m.t,y2:H-m.b,stroke:css('--ink2'),'stroke-width':1,visibility:'hidden'},svg);
+    const hit=el('rect',{x:m.l,y:m.t,width:W-m.l-m.r,height:H-m.t-m.b,fill:'transparent'},svg);
+    function move(ev){const r=svg.getBoundingClientRect();const px=(ev.touches?ev.touches[0].clientX:ev.clientX)-r.left;
+      const i=Math.max(0,Math.min(N-1,Math.round((px-m.l)/(W-m.l-m.r)*(N-1))));
+      cross.setAttribute('x1',x(i));cross.setAttribute('x2',x(i));cross.setAttribute('visibility','visible');
+      showTip('<b>'+mname(i)+'</b><br>'+series.map(s=>s.n+': '+opt.fmt(s.v[i])).join('<br>'),r.left+x(i),r.top+m.t)}
+    hit.addEventListener('mousemove',move);hit.addEventListener('touchstart',move,{passive:true});hit.addEventListener('touchmove',move,{passive:true});
+    hit.addEventListener('mouseleave',()=>{cross.setAttribute('visibility','hidden');hideTip()});
+  }
+  draw();redraws.push(draw);
+}
+const redraws=[];
+const idx=s=>mo.indexOf(s);
+const pk=D.any.indexOf(Math.max.apply(null,D.any));
+lineChart('c-any',[{n:'Share',v:D.any,c:'--rise',area:true,labels:[{i:pk,t:D.any[pk].toFixed(1)+'%',dy:-12},{i:N-1,t:D.any[N-1].toFixed(1)+'%',dy:18,a:'end'},{i:idx('2022-06'),t:'1.4%',dy:-12}]}],
+  {h:330,max:14,ticks:[0,2,4,6,8,10,12,14],unit:'%',event:idx('2022-11'),fmt:v=>v.toFixed(1)+'%',label:'Line chart: share of abstracts with a marker word, flat near 1.4% until 2023, peaking at 12.2% in November 2025'});
+const W_=D.words, r=w=>W_[w].r;
+const pkOf=w=>r(w).indexOf(Math.max.apply(null,r(w)));
+lineChart('c-fade',[{n:'intricate',v:r('intricate'),c:'--fade',labels:[{i:pkOf('intricate'),t:'intricate'}]},{n:'delves',v:r('delves'),c:'--fade',labels:[{i:pkOf('delves'),t:'delves'}]}],
+  {h:280,max:240,ticks:[0,60,120,180,240],fmt:v=>v.toFixed(0)+' per 10,000',label:'Line chart: intricate and delves rise to a 2024 peak and fall back'});
+lineChart('c-rise',[{n:'integrates',v:r('integrates'),c:'--rise',labels:[{i:N-1,t:'integrates',a:'start',dx:8,dy:4}]},{n:'underscoring',v:r('underscoring'),c:'--rise',labels:[{i:N-1,t:'underscoring',a:'start',dx:8,dy:4}]},{n:'synthesizes',v:r('synthesizes'),c:'--rise',labels:[{i:N-1,t:'synthesizes',a:'start',dx:8,dy:4}]}],
+  {h:280,r:96,max:240,ticks:[0,60,120,180,240],fmt:v=>v.toFixed(0)+' per 10,000',label:'Line chart: integrates, underscoring and synthesizes climb through 2025 and stay high in 2026'});
+
+/* bar race */
+const raceWords=Object.keys(W_).filter(w=>!W_[w].ctrl&&W_[w].b>=0.5);
+const race=document.getElementById('race'),range=document.getElementById('race-range'),out=document.getElementById('race-month'),btn=document.getElementById('race-play');
+const ROWS=10,RH=34;range.max=N-1;
+const rows={};
+raceWords.forEach(w=>{const d=document.createElement('div');d.className='row';d.style.opacity=0;d.style.transform=`translateY(${ROWS*RH}px)`;
+  d.innerHTML='<span class="w"></span><span class="track"><span class="bar"></span><span class="v"></span></span>';
+  d.firstChild.textContent=w;d.querySelector('.bar').style.background=W_[w].faded?'var(--fade)':'var(--rise)';race.appendChild(d);rows[w]=d});
+function frame(i){
+  out.textContent=mname(i);
+  const rk=raceWords.map(w=>({w:w,x:W_[w].r[i]/W_[w].b,v:W_[w].r[i]})).sort((a,b)=>b.x-a.x);
+  const mx=Math.max(8,rk[0].x);
+  rk.forEach((o,k)=>{const d=rows[o.w];
+    if(k<ROWS){d.style.opacity=1;d.style.transform=`translateY(${k*RH}px)`;d.querySelector('.bar').style.width=(78*o.x/mx)+'%';
+      d.querySelector('.v').textContent='×'+(o.x>=10?o.x.toFixed(0):o.x.toFixed(1));d.title=o.w+': '+o.v.toFixed(1)+' per 10,000 abstracts'}
+    else{d.style.opacity=0;d.style.transform=`translateY(${ROWS*RH}px)`}});
+}
+let timer=null;
+function stop(){clearInterval(timer);timer=null;btn.textContent='Play'}
+btn.addEventListener('click',()=>{if(timer){stop();return}
+  if(+range.value>=N-1||+range.value===63)range.value=idx('2022-09');
+  btn.textContent='Pause';timer=setInterval(()=>{const i=+range.value+1;if(i>N-1){stop();return}range.value=i;frame(i)},380)});
+range.addEventListener('input',()=>{if(timer)stop();frame(+range.value)});
+range.value=idx('2024-04');frame(+range.value);
+
+/* horizontal bars */
+function hbars(id,rows_,max,sub){
+  const h=document.getElementById(id);
+  rows_.forEach(d=>{const row=document.createElement('div');row.className='hbrow';
+    row.innerHTML=`<span class="n"></span><span class="t"><b style="width:${100*d.s25/max}%"></b><u style="left:${100*d.s22/max}%"></u></span><span class="p">${d.s25.toFixed(1)}%</span>`;
+    row.firstChild.textContent=d.n;if(sub){const s=document.createElement('small');s.textContent=' '+sub(d);row.firstChild.appendChild(s)}
+    const t=row.children[1];
+    t.addEventListener('mousemove',e=>showTip(`<b>${d.n}</b><br>2025: ${d.s25.toFixed(1)}% of ${fmt(d.p25)} abstracts<br>2022: ${d.s22.toFixed(1)}%`,e.clientX,e.clientY));
+    t.addEventListener('mouseleave',hideTip);h.appendChild(row)});
+}
+hbars('c-country',D.countries,18);
+hbars('c-pub',D.publishers,18,d=>d.j+' journals');
+
+/* journal strip */
+(function(){
+  const host=document.getElementById('c-jr');
+  function draw(){
+    host.innerHTML='';const W=host.clientWidth||600,R=W<520?4:5,H=190,m={l:14,r:14,b:30};
+    const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,height:H,role:'img','aria-label':'Dot plot of 111 journals by 2025 marker-word share, from 2.7% to 21.5%'},host);
+    const x=v=>m.l+(W-m.l-m.r)*v/24, base=H-m.b-R-4;
+    el('line',{x1:m.l,x2:W-m.r,y1:H-m.b,y2:H-m.b,stroke:css('--rule')},svg);
+    [0,4,8,12,16,20,24].forEach(v=>txt(svg,x(v),H-10,v+'%',{'text-anchor':'middle'}));
+    const placed=[];
+    D.journals.slice().sort((a,b)=>a.s25-b.s25).forEach(d=>{const cx=x(d.s25);let cy=base;
+      while(placed.some(p=>Math.hypot(p[0]-cx,p[1]-cy)<2*R+1.5))cy-=2;
+      placed.push([cx,cy]);
+      const c=el('circle',{cx:cx,cy:cy,r:R,fill:css('--rise'),stroke:css('--surface'),'stroke-width':1.5,tabindex:0},svg);
+      const show=e=>{const b=c.getBoundingClientRect();showTip(`<b>${d.n}</b><br>${d.p}<br>2025: ${d.s25.toFixed(1)}% of ${fmt(d.p25)}<br>2022: ${d.s22.toFixed(1)}%`,b.left+R,b.top)};
+      c.addEventListener('mouseenter',show);c.addEventListener('focus',show);c.addEventListener('click',show);c.addEventListener('mouseleave',hideTip);c.addEventListener('blur',hideTip)});
+    const lo=D.journals[D.journals.length-1],hi=D.journals[0];
+    txt(svg,x(lo.s25)-R,base-14,lo.n,{'text-anchor':'start',class:'lab'});
+    txt(svg,x(hi.s25)+R,base-14,hi.n,{'text-anchor':'end',class:'lab'});
+  }
+  draw();redraws.push(draw);
+})();
+function table(id,rows_){
+  const t=document.getElementById(id);t.innerHTML='<thead><tr><th>Journal</th><th class="num">2022</th><th class="num">2025</th></tr></thead>';
+  const b=document.createElement('tbody');rows_.forEach(d=>{const tr=document.createElement('tr');
+    tr.innerHTML='<td></td><td class="num">'+d.s22.toFixed(1)+'%</td><td class="num">'+d.s25.toFixed(1)+'%</td>';
+    tr.firstChild.textContent=d.n+' ';const s=document.createElement('small');s.textContent=d.p==='Other'?'':d.p;tr.firstChild.appendChild(s);b.appendChild(tr)});t.appendChild(b);
+}
+table('t-hi',D.journals.slice(0,10));table('t-lo',D.journals.slice(-10).reverse());
+let rz;addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>redraws.forEach(f=>f()),150)});
+const mq=matchMedia('(prefers-color-scheme: dark)');if(mq.addEventListener)mq.addEventListener('change',()=>redraws.forEach(f=>f()));
+new MutationObserver(()=>redraws.forEach(f=>f())).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+})();
+</script>
+
+</body>
+</html>
