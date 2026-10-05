@@ -2,8 +2,8 @@
 
 A data story on the words that spread through research abstracts after ChatGPT, and how that vocabulary keeps changing.
 
-- **Tech** (`index.html`): 736,000 computer-science and electrical-engineering abstracts on arXiv, January 2019 to September 2026. Three sets of marker words peak in turn, in 2024, 2025 and 2026.
-- **Biomedical** (`biomedical/index.html`): 10.4 million PubMed abstracts via Europe PMC, with views by country, publisher and journal.
+- **Tech** ([live](https://eshwarpotturi.github.io/after-delve/), `index.html`): 736,000 computer-science and electrical-engineering abstracts on arXiv, January 2019 to September 2026. Three sets of marker words peak in turn, in 2024, 2025 and 2026.
+- **Biomedical** ([live](https://eshwarpotturi.github.io/after-delve/biomedical/), `biomedical/index.html`): 10.4 million PubMed abstracts via Europe PMC, with views by country, publisher and journal.
 
 Both pages are self-contained HTML with their data embedded, so GitHub Pages serves them as they are (`.nojekyll` is included). To view locally, open either file in a browser. There is nothing to build or install.
 
