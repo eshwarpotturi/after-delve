@@ -7,6 +7,25 @@ A data story on the words that spread through research abstracts after ChatGPT, 
 
 Both pages are self-contained HTML with their data embedded, so GitHub Pages serves them as they are (`.nojekyll` is included). To view locally, open either file in a browser. There is nothing to build or install.
 
+## Quick start
+
+```
+git clone https://github.com/eshwarpotturi/after-delve
+cd after-delve
+start index.html          # Windows; use `open` on macOS, `xdg-open` on Linux
+```
+
+Each page works offline. To host it, enable GitHub Pages on the `main` branch, root folder.
+
+## How to read the pages
+
+- A **marker word** is a word whose share of abstracts rose sharply after ChatGPT (late 2022) compared with a 2021 to 2022 baseline.
+- **Document frequency** is the share of abstracts in a month that contain the word at least once.
+- Inflected forms are merged into one **family** (delve, delves, delving), so each bar is one word.
+- **Waves** are groups of marker words that peak at the same time: 2024, 2025 and 2026 on the tech page.
+- Control words such as "however" show what an ordinary word does over the same period.
+- The **placebo** test applies the same selection to pre-ChatGPT years to show how many words rise by chance.
+
 ## Repository layout
 
 ```
@@ -58,6 +77,13 @@ Python 3 with `duckdb` for the tech scripts. The biomedical scripts use only the
 - [Crossref](https://www.crossref.org/)
 
 The method follows Kobak et al., [Delving into ChatGPT usage in academic writing through excess vocabulary](https://arxiv.org/abs/2406.07016).
+
+## Limitations
+
+- Word counts show changed wording. They cannot say whether a person or a tool wrote any given abstract.
+- The arXiv data covers computer science and electrical engineering only. The biomedical page uses Europe PMC hit counts, which depend on its indexing and on a sampled word-discovery step.
+- Publisher names come from Crossref lookups of top journals and may be incomplete or out of date.
+- Recent months are partial, so the latest points can move as more abstracts are indexed.
 
 ## Notes
 
